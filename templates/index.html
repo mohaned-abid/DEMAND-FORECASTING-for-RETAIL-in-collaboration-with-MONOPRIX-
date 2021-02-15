@@ -1,0 +1,232 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta http-equiv="Content-Type"  charset="UTF-8">
+<meta id="my-data" data-other="{{data}}">
+<meta id="my-data1" data-other="{{data1}}">
+<meta id="my-data2" data-other="{{data2}}">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="project tuto with monoprix">
+    <meta name="author" content="lamjed gaidi mohaned abid">
+    <link rel="icon" href="/static/img/square4.png" type="image/x-icon">
+    <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+    <script src="/static/js/read-excel-file.min.js"></script>
+    <script src="/static/js/canvasjs.stock.min.js"></script>
+    <script src="/static/js/canvasjs.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script> 
+    <script type="text/javascript" src="https://canvasjs.com/assets/script/jquery-1.11.1.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <title>Monoprix Forecaster</title>
+    <link rel="stylesheet" href="/static/css/main3.css">
+
+<script type="text/javascript" src="https://canvasjs.com/assets/script/canvasjs.stock.min.js"></script>
+
+</head>
+<body>
+<!--nav bar------------------------------------------------------------->
+<nav class="navbar navbar-light bg-light">
+    <!------------------------------------------------->
+       <img src="/static/img/monoprix2.png"  alt="monoprix logo" width="80px" height="auto">
+    <!------------------------------------------------->
+    <a type="button"  href="{{ url_for('process') }}" class="btn btn-light">Reset</a>
+    <div style="width:50%;">
+        <form method="post" action="{{ url_for('process') }}" enctype="multipart/form-data">
+          <div class="input-group">
+            <div class="custom-file">
+              <input type="file" name="myfile" data-max-size="10000000" class="custom-file-input" id="inputGroupFile25249215" required>
+              <label class="custom-file-label" for="inputGroupFile25249215">Choose file</label>
+            </div>
+            
+         
+          <div class="input-group-append">
+              <input  class="btn btn-outline-secondary" type="submit" value="add"></input>
+           </div>
+        </form>
+      </div>
+    <!------------------------------------------------->
+</nav>
+
+<!--nav bar------------------------------------------------------------->     
+<div style="float: left; margin: 1% 5%; padding-top: 5%;">
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+        {% for message in messages %}
+            <div style="background-color:rgb(228, 106, 106); border-color: rgb(228, 106, 106); color: #000;" class="alert alert-primary alert-dismissible fade show" role="alert">
+                <span>{{ message }}</span>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+    <form method="POST" action="{{ url_for('process') }}">
+        <div class="row" required>
+            <label for="input1">shop_id</label>
+            <input type="text" id="input1" class="form-control" placeholder="shop_id"  name="shop_id" required></br>
+        </div>
+        <div class="row">
+            <label for="input2">item_id</label>
+            <input type="text" id="input2" class="form-control" placeholder="item_id" name="item_id" required></br>
+        </div>
+        <div class="row">
+            <label for="input2">item_category</label>
+            <input type="text" id="input7" class="form-control" placeholder="item_category" name="item_category" required></br>
+        </div>
+        <div class="row">
+            <label for="input2">id_struct</label>
+            <input type="text" id="input8" class="form-control" placeholder="id_struct" name="id_struct" required></br>
+        </div>
+    
+        <div class="row">
+            <label for="input4">Price</label>
+            <input type="text" id="input47" class="form-control" placeholder="price" name="price" required></br>
+        </div>
+        <div class="row">
+            <label for="input5">starting date</label>
+            <input type="text" id="input5" class="form-control" placeholder="YYYY-MM" name="date" required></br>
+        </div>
+    
+        <div class="row">
+            <label for="input6">period</label>
+            <select class="custom-select" id="input6" name="period" required>
+                <option selected>Choose period</option>
+                <option value="1">1 month</option>
+                <option value="2">2 months</option>
+                <option value="3">3 months</option>
+                <option value="4">4 months</option>
+            </select>
+        </div></br>
+            <button type="button" onclick="download_csv()" class="btn text-white btn-primary" style="background-color: red; border-color:red;margin: 50px;">Download</button>
+        <input type="submit" style="background-color: red; border-color:red;margin: 50px;" class="btn text-white btn-primary"> 
+    </form>
+</div>
+<div id="stockChartContainer" style="height: 400px; width: 70%; float:right; padding-top: 5%;">
+</div>
+
+
+<script type="text/javascript">
+//download data------------------------------------------------------------------------
+
+var graph_is_list = [];
+var download_is_list = [];
+ 
+function download_csv() {
+    var csv = 'Date,item_id,predictions,shop_id\n';
+    download_is_list.forEach(function(row) {
+            csv += row.join(',');
+            csv += "\n";
+    });
+
+    var hiddenElement = document.createElement('a');
+    hiddenElement.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+    hiddenElement.target = '_blank';
+    hiddenElement.download = 'sales_forecasting_data.csv';
+    hiddenElement.click();
+}
+  window.onload = function() {
+
+    var data = $('#my-data').data().other;
+    var data1 = $('#my-data1').data().other;
+    var data2 = $('#my-data2').data().other;
+    var ground_truth_history_graph = []
+    var historical_predictions_graph = []
+    var current_prediction_graph = []
+    var length_data1 = Object.keys(data1['Date']).length;
+    var length_data2 = Object.keys(data2['Date']).length;
+  
+    for(const key in data['Date']){
+        
+        var point_to_graph =  {x : data['Date'][key], y:data['item_cnt_month'][key] } ;
+        ground_truth_history_graph.push(point_to_graph);
+    }
+    for(var i=0;i<length_data1;i++){
+        var point_to_graph1 =  {x : data1['Date'][i], y:data1['predictions'][i] } ;
+        historical_predictions_graph.push(point_to_graph1);
+    }
+    for(var i=0;i<length_data2;i++){
+        var date_v = new Date(data2['Date'][i])
+        var year = date_v.getFullYear();
+        var month = ("0" + (date_v.getMonth() + 1)).slice(-2);
+        var new_date = year +'-'+month;
+        var point_to_graph2 =  {x : data2['Date'][i], y:data2['predictions'][i] } ;
+        var point_to_download = [ new_date,data2['item_id'][i],data2['predictions'][i],data2['shop_id'][i]];
+        current_prediction_graph.push(point_to_graph2);
+        download_is_list.push(point_to_download);
+    }
+   
+var chart = new CanvasJS.Chart("stockChartContainer", {
+	animationEnabled: true,
+    zoomEnabled: true,
+	title: {
+		text: "Sales forecast"
+	},
+	axisX: {
+		title: "Time"
+	},
+	axisY: {
+		title: "Quantity of sales",
+		includeZero: true
+	},
+    legend: {
+		cursor: "pointer",
+		itemmouseover: function(e) {
+			e.dataSeries.lineThickness = e.chart.data[e.dataSeriesIndex].lineThickness * 2;
+			e.dataSeries.markerSize = e.chart.data[e.dataSeriesIndex].markerSize + 2;
+			e.chart.render();
+		},
+		itemmouseout: function(e) {
+			e.dataSeries.lineThickness = e.chart.data[e.dataSeriesIndex].lineThickness / 2;
+			e.dataSeries.markerSize = e.chart.data[e.dataSeriesIndex].markerSize - 2;
+			e.chart.render();
+		},
+		itemclick: function (e) {
+			if (typeof (e.dataSeries.visible) === "undefined" || e.dataSeries.visible) {
+				e.dataSeries.visible = false;
+			} else {
+				e.dataSeries.visible = true;
+			}
+			e.chart.render();
+		}
+	},
+	data: [{
+		type: "line",
+		name: "historical sales",
+		connectNullData: true,
+        showInLegend: true,
+		//nullDataLineDashType: "solid",
+		xValueType: "dateTime",
+		xValueFormatString: "DD MMM hh:mm TT",
+		yValueFormatString: "#,##0.##\"%\"",
+        dataPoints:ground_truth_history_graph.sort((a, b) => (a.x > b.x) ? 1 : -1)
+        
+	},{
+		type: "line",
+		name: "historical predictions",
+		connectNullData: true,
+        showInLegend: true,
+		//nullDataLineDashType: "solid",
+		xValueType: "dateTime",
+		xValueFormatString: "DD MMM hh:mm TT",
+		yValueFormatString: "#,##0.##\"%\"",
+		dataPoints:historical_predictions_graph.sort((a, b) => (a.x > b.x) ? 1 : -1)
+	},{
+		type: "line",
+		name: "Forecast data",
+        showInLegend: true,
+		connectNullData: true,
+		//nullDataLineDashType: "solid",
+		xValueType: "dateTime",
+		xValueFormatString: "DD MMM hh:mm TT",
+		yValueFormatString: "#,##0.##\"%\"",
+		dataPoints:current_prediction_graph.sort((a, b) => (a.x > b.x) ? 1 : -1)
+	}]
+});
+chart.render();
+
+}
+</script>
+</body>
+</html>
